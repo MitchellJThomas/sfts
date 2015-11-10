@@ -44,17 +44,21 @@
   (clojure.java.io/copy i (clojure.java.io/file "stuff"))
 
   ;; Parse all show titles and show urls
-  (def ht (-> @(http/get "http://xray.fm/programs/searchingforthesound/page:9?url=shows%2Fsearchingforthesound")
+  (range 1 10)
+  (def ht (-> @(http/get "http://xray.fm/programs/searchingforthesound/page:8?url=shows%2Fsearchingforthesound")
               :body
               hic/parse
               hic/as-hickory))
   (def show-map (hics/select
               (hics/descendant (hics/class :broadcast) (hics/class :title) (hics/attr :href #(.startsWith % "/broadcasts/"))) ht))
-  (def shows (map (fn [s] [(first  (:content s)) (get-in s [:attrs :href])] ) show-map))
+  (def shows (map (fn [{[s] :content {h :href} :attrs}] [s h]) show-map))
   shows
 
+  (def s2 (hics/select (hics/descendant (hics/class :broadcast) (hics/or (hics/child (hics/class :title) (hics/attr :href #(.startsWith % "/broadcasts/"))) (hics/class :date)) ) ht))
+  (map (fn [[{a :attrs [ac] :content} {b :attrs [bc] :content}]] [a ac b bc]) (partition 2 s2))
+  
   ;; Parse a given show
-  (def sho (-> @(http/get "http://xray.fm/broadcasts/525")
+  (def sho (-> @(http/get "http://xray.fm/broadcasts/1409")
               :body
               hic/parse
               hic/as-hickory))
