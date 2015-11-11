@@ -45,7 +45,7 @@
 
   ;; Parse all show titles and show urls
   (range 1 10)
-  (def ht (-> @(http/get "http://xray.fm/programs/searchingforthesound/page:8?url=shows%2Fsearchingforthesound")
+  (def ht (-> @(http/get "http://xray.fm/programs/searchingforthesound/page:9?url=shows%2Fsearchingforthesound")
               :body
               hic/parse
               hic/as-hickory))
@@ -54,11 +54,15 @@
   (def shows (map (fn [{[s] :content {h :href} :attrs}] [s h]) show-map))
   shows
 
+  ;; Pick up the show's date in hope to match up with downloaded file
   (def s2 (hics/select (hics/descendant (hics/class :broadcast) (hics/or (hics/child (hics/class :title) (hics/attr :href #(.startsWith % "/broadcasts/"))) (hics/class :date)) ) ht))
-  (map (fn [[{a :attrs [ac] :content} {b :attrs [bc] :content}]] [a ac b bc]) (partition 2 s2))
+  (def s3 (map (fn [[{[show-date] :content} { {show-href :href} :attrs [show-title] :content}]]
+                 {:date show-date :href show-href :title show-title})
+               (partition 2 s2)))
+
   
   ;; Parse a given show
-  (def sho (-> @(http/get "http://xray.fm/broadcasts/1409")
+  (def sho (-> @(http/get "http://xray.fm/broadcasts/525")
               :body
               hic/parse
               hic/as-hickory))
@@ -70,4 +74,6 @@
   show-track-map
 
 
+  
+  
   )
