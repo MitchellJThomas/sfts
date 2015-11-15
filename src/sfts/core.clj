@@ -5,12 +5,15 @@
    [clj-time.coerce :as tc]
    [clj-time.format :as tf]
    [hickory.select :as hics]
-   [hickory.core :as hic])
+   [hickory.core :as hic]
+   [green-tags.core :as mp3])
   (:gen-class))
 
 (def friday-show-start (t/date-time 2014 9 19 23))
 (def monday-show-start (t/date-time 2014 3 17 21))
 (def fm (tf/formatter "YYYY-MM-dd_HH"))
+(def album-fm (tf/formatter "YYYY-MM-dd"))
+(def grouping-fm (tf/formatter "MMMM dd"))
 (def bcast-fm (tf/formatter-local "hh:mmaa, MM-dd-YYYY"))
 
 (defn mp3-download-uri
@@ -51,12 +54,44 @@
 ;; lets be nice to the xray webserver
 (def get-broadcasts-memo (memoize get-broadcasts))
 
+(defn get-broadcast-deets
+  "Parse a given show's web page"
+  [broadcast-url]
+  (->> @(http/get broadcast-url)
+       :body
+       hic/parse
+       hic/as-hickory
+       (hics/select (hics/descendant (hics/class :tracks-container) (hics/class :track)))))
+
+(def get-broadcast-deets-memo (memoize get-broadcast-deets))
+
+;; TODO convert to using transducers
+(defn clean-broadcast-deets
+  [broadcast-deets]
+  (let [tracks (->> broadcast-deets
+                    (map (fn [{c :content}] c))
+                    (map #(filter map? %)))]
+    (map #(map (fn [{{track :class} :attrs con :content}]
+                 (format "%s: %s"  (re-find #"\w+$" track)(first con))) %) tracks)))
+
+(defn get-broadcast-notes
+  [broadcast-url]
+  (->> broadcast-url
+       get-broadcast-deets-memo
+       clean-broadcast-deets
+       (map #(clojure.string/join ", " %))
+       ))
+
 (defn get-all-broadcasts
   "Get all the broadcasts and related details that XRAY has for Searching For The Sound"
   []
   (let [n (range 1 10)
         show-urls (map #(format "http://xray.fm/programs/searchingforthesound/page:%s?url=shows%%2Fsearchingforthesound" %) n)]
     (flatten (map get-broadcasts-memo show-urls))))
+
+(defn get-all-broadcasts-with-notes
+  []
+  (map #(assoc % :tracks (get-broadcast-notes (str "http://xray.fm" (:href %)))) (get-all-broadcasts)))
 
 (defn -main
   "Downloading Searching For The Sound Shows"
@@ -69,33 +104,43 @@
   (def i (clojure.java.io/input-stream b))
   (clojure.java.io/copy i (clojure.java.io/file "stuff"))
 
-  ;; 
-  ;; Pick up the show's date in hope to match up with downloaded file
   (get-broadcasts-memo "http://xray.fm/programs/searchingforthesound/page:9?url=shows%2Fsearchingforthesound")
+  (def bn (get-all-broadcasts-with-notes))
+  bn
 
-  (get-all-broadcasts)
+  (def fe (mp3/get-all-info "/Users/mthomas/Music/iTunes/iTunes Media/Music/Compilations/2015-10-23/Soul Sisters.mp3"))
+  fe
+
+    (defn map-it-to-mp3
+    [show]
+    {:grouping (tf/unparse grouping-fm (:date show))
+     :lyrics  (clojure.string/join \newline (:tracks show))
+     :artist  (identity  "Searching for the Sound")
+     :album   (str (tf/unparse album-fm (:date show))) 
+     :title  (:title show)
+     :year   (t/year (:date show))
+     :composer  (identity  "DJ Cozmic Edward")
+     :comment  (identity  "http://xray.fm/shows/searchingforthesound") }
+      )
+
+    (defn map-it-to-file
+      [show]
+      (printf "Searching For The Sound\n%s\n%s\nDJ Cozmic Edward\nhttp://xray.fm/shows/searchingforthesound\n\ntracks:\n%s\n\n"
+              (:title show)
+              (:date show)
+              (clojure.string/join \newline (:tracks show))))
+
+  (map-it-to-mp3 (first bn))
+  (map-it-to-file (first bn))
   
-  ;; Parse a given show
-  (defn get-broadcast-deets
-    [broadcast-url]
-    (->> @(http/get broadcast-url)
-         :body
-         hic/parse
-         hic/as-hickory
-         (hics/select (hics/descendant (hics/class :tracks-container) (hics/class :track)))))
+  
+  ;; get the mp3 infos, put the mp3 infos
+  (mp3/get-all-info "/Users/mthomas/Music/iTunes/iTunes Media/Music/Searching For The Sound/Unknown Album/searchingforthesound_2015-10-30_23-00-00.mp3")
+  (mp3/update-tag! "/Users/mthomas/Music/iTunes/iTunes Media/Music/Searching For The Sound/Unknown Album/searchingforthesound_2015-10-30_23-00-00.mp3" { :year "2015", :composer "DJ Cozmic Edward", :comment "http://xray.fm/shows/searchingforthesound"})
 
-  (defn clean-broadcast-deets
-    [broadcast-deets]
-    (let [tracks (->> broadcast-deets
-                      (map (fn [{c :content}] c))
-                      (map #(filter map? %)))]
-      (map #(map (fn [{{track :class} :attrs con :content}]
-                      (format "%s: %s"  (re-find #"\w+$" track)(first con))) %) tracks)))
+  (clojure.string/join "\n"(get-broadcast-notes "http://xray.fm/broadcasts/9382"))
 
-  (->> "http://xray.fm/broadcasts/1232"
-      get-broadcast-deets
-      clean-broadcast-deets
-      (map #(clojure.string/join ", " %)))
+  (tf/unparse bcast-fm (t/now))
 
 
   )
