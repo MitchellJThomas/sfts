@@ -1,16 +1,17 @@
-# sfts
+# Download and tag Searching For The Sound shows
 
-The Searching For The Sound (sfts) show downloader and screen scraper
-(for show info)
-
-## Installation
-
-None yet.
+Searching For The Sound (sfts) is a show hosted by DJ Cozmic Edward on
+XRAY.fm.  This repository contains code to browse the
+[XRAY.fm website](http://xray.fm/shows/searchingforthesound), find the
+history of broadcasts, get the related broadcast details e.g. tracks
+played, broadcast date and time and use that information to download
+the archived broadcast mp3s and tag them with the details.
 
 ## Usage
 
-Gotta use the Clojure REPL
+1. Install a jdk
+2. [Install leiningen](http://leiningen.org/)
+3. Clone [this repo]()
+4. cd to the repo directory and issue `lein run`
 
-## Examples
-
-See core.clj
+or use the REPL
