@@ -1,7 +1,7 @@
 (defproject sfts "0.1.0-SNAPSHOT"
   :description "Suck down Searching For The Sound shows"
-  :license {:name "Eclipse Public License"
-            :url "http://www.eclipse.org/legal/epl-v10.html"}
+  :license {:name "Apache Licence v2"
+            :url "http://www.apache.org/licenses/"}
   :dependencies [[org.clojure/clojure "1.7.0"]
                  [http-kit "2.1.19"]
                  [hickory "0.5.4"]
