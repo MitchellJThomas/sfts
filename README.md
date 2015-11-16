@@ -11,7 +11,7 @@ the archived broadcast mp3s and tag them with the details.
 
 1. Install a jdk
 2. [Install leiningen](http://leiningen.org/)
-3. Clone [this repo]()
+3. Clone [this repo](https://github.com/MitchellJThomas/sfts)
 4. cd to the repo directory and issue `lein run`
 
 or use the REPL
