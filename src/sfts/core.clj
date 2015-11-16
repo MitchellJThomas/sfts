@@ -1,5 +1,6 @@
 (ns sfts.core
   (:require
+   [clojure.java.io :as io]
    [org.httpkit.client :as http]
    [clj-time.core :as t]
    [clj-time.coerce :as tc]
@@ -43,9 +44,9 @@
   [dt dir]
   (let [{:keys [body status]} @(http/get (mp3-download-uri dt) {:as :stream})]
     (when (= 200 status)
-      (let [mp3-stream (clojure.java.io/input-stream body)
-            download-file (clojure.java.io/file (str dir (mp3-broadcast-file dt)))]
-        (clojure.java.io/copy mp3-stream download-file))
+      (let [mp3-stream (io/input-stream body)
+            download-file (io/file (str dir (mp3-broadcast-file dt)))]
+        (io/copy mp3-stream download-file))
       true)))
 
 (defn get-broadcasts
@@ -129,22 +130,22 @@
    :comment  (identity  "http://xray.fm/shows/searchingforthesound")
    :is-compilation true
    :genre "Spoken & Audio"
-   :artwork-file "/Users/mthomas/Downloads/searching_for_the_sound/sfts/resources/cover.jpg"})
+   :artwork-file (.getFile (io/resource "cover.jpg"))})
 
-(defn build-downloads
+(defn build-downloads-script
   "Build a file using wget for downloading all the shows using dates"
   []
-  (let [d (clojure.java.io/file "download.sh")
-        d2 (clojure.java.io/file "download2.sh")]
+  (let [d (io/file "download.sh")
+        d2 (io/file "download2.sh")]
     (dorun (map #(spit d (format "wget -nc %s\n" %) :append true) (get-mp3-downloads friday-show-start)))
     (dorun (map #(spit d2 (format "wget -nc %s\n" %) :append true) (get-mp3-downloads monday-show-start friday-show-start)))))
 
-(defn the-whole-shebang
+(defn whole-shebang!
   "Download, tag and write details for all shows to the provided directory"
   [dir]
   (doseq [b (get-all-broadcasts-with-notes)]
-    (let [mp3 (clojure.java.io/file (str dir (mp3-broadcast-file (:date b))))
-          txt (clojure.java.io/file (str dir (txt-broadcast-file (:date b))))
+    (let [mp3 (io/file (str dir (mp3-broadcast-file (:date b))))
+          txt (io/file (str dir (txt-broadcast-file (:date b))))
           dt (tf/unparse fm (:date b))]
       (if (not (.exists mp3))
         (println "Downloading broadcast for " dt)
@@ -160,7 +161,7 @@
 (defn -main
   "Downloading all Searching For The Sound shows (an XRAY.fm broadcast)"
   [& args]  
-  (the-whole-shebang "./"))
+  (whole-shebang! "./"))
 
 (comment
   (get-broadcasts-memo "http://xray.fm/programs/searchingforthesound/page:8?url=shows%2Fsearchingforthesound")
@@ -175,4 +176,5 @@
   (download-mp3-broadcast (:date (nth bn 50)) "/Users/mthomas/Downloads/searching_for_the_sound/")
 
   (the-whole-shebang "/Users/mthomas/Downloads/searching_for_the_sound/")
+
   )
