@@ -48,13 +48,6 @@
         (clojure.java.io/copy mp3-stream download-file))
       true)))
 
-(defn build-downloads
-  []
-  (let [d (clojure.java.io/file "download.sh")
-        d2 (clojure.java.io/file "download2.sh")]
-    (dorun (map #(spit d (format "wget -nc %s\n" %) :append true) (get-mp3-downloads friday-show-start)))
-    (dorun (map #(spit d2 (format "wget -nc %s\n" %) :append true) (get-mp3-downloads monday-show-start friday-show-start)))))
-
 (defn get-broadcasts
   "Get all the broadcasts including specific broadcast url and title"
   [broadcasts-url]
@@ -138,12 +131,20 @@
    :genre "Spoken & Audio"
    :artwork-file "/Users/mthomas/Downloads/searching_for_the_sound/sfts/resources/cover.jpg"})
 
+(defn build-downloads
+  "Build a file using wget for downloading all the shows using dates"
+  []
+  (let [d (clojure.java.io/file "download.sh")
+        d2 (clojure.java.io/file "download2.sh")]
+    (dorun (map #(spit d (format "wget -nc %s\n" %) :append true) (get-mp3-downloads friday-show-start)))
+    (dorun (map #(spit d2 (format "wget -nc %s\n" %) :append true) (get-mp3-downloads monday-show-start friday-show-start)))))
+
 (defn the-whole-shebang
-  "Download, tag and write details for all shows to the following directory"
+  "Download, tag and write details for all shows to the provided directory"
   [dir]
   (doseq [b (get-all-broadcasts-with-notes)]
-    (let [mp3 (clojure.java.io/file (str d (mp3-broadcast-file (:date b))))
-          txt (clojure.java.io/file (str d (txt-broadcast-file (:date b))))
+    (let [mp3 (clojure.java.io/file (str dir (mp3-broadcast-file (:date b))))
+          txt (clojure.java.io/file (str dir (txt-broadcast-file (:date b))))
           dt (tf/unparse fm (:date b))]
       (if (not (.exists mp3))
         (println "Downloading broadcast for " dt)
@@ -157,53 +158,21 @@
       (println "Wrote broadcast details for" dt))))
 
 (defn -main
-  "Downloading Searching For The Sound Shows"
+  "Downloading all Searching For The Sound shows (an XRAY.fm broadcast)"
   [& args]  
   (the-whole-shebang "./"))
 
 (comment
-  ;; Download bytes
-  (def b (:body @(http/get "https://xray-fc1-west.creek.fm/audio/searchingforthesound/searchingforthesound_2015-06-26_23-00-00.mp3" {:as :stream})))
-  (def i (clojure.java.io/input-stream b))
-  (clojure.java.io/copy i (clojure.java.io/file "stuff"))
-
   (get-broadcasts-memo "http://xray.fm/programs/searchingforthesound/page:8?url=shows%2Fsearchingforthesound")
 
   (def bn (get-all-broadcasts-with-notes))
-  bn
-
-  (def fe (mp3/get-all-info "/Users/mthomas/Music/iTunes/iTunes Media/Music/Compilations/2015-10-23/Soul Sisters.mp3"))
-  fe
-  
-  ;;1. Unhandled org.jaudiotagger.audio.exceptions.InvalidAudioFrameException
-  ;; No audio header found
-  ;; withinsearchingforthesound_2014-11-21_23-00-00.mp3
-
-  (let [b (nth bn 3)
-        d "/Users/mthomas/Downloads/searching_for_the_sound/"
-        mp3 (clojure.java.io/file (str d (mp3-broadcast-file (:date b))))
-        txt (clojure.java.io/file (str d (txt-broadcast-file (:date b))))
-        dt (tf/unparse fm(:date b))]
-    (if (not (.exists mp3))
-      (println "Downloading broadcast for " dt)
-      (download-mp3-broadcast (:date b) d))
-    (when (.exists mp3)
-       (try
-         (mp3/update-tag! mp3 (map-show-to-mp3 b))
-         (catch Exception e (println "Got error" e "tagging broadcast" mp3)))
-      (println "Tagged broadcast" mp3))
-    (println "Writting broadcast details for " dt)
-    (spit txt (map-show-to-file b)))
-
-
-
   (map-show-to-mp3 (nth bn 3))
   (map-show-to-file (nth bn 3))
   
   ;; get the mp3 infos, put the mp3 infos
   (mp3/get-all-info "/Users/mthomas/Downloads/searching_for_the_sound/searchingforthesound_2015-10-23_23-00-00.mp3")
 
+  (download-mp3-broadcast (:date (nth bn 50)) "/Users/mthomas/Downloads/searching_for_the_sound/")
 
-  (download-mp3-broadcat (:date (nth bn 50)) "/Users/mthomas/Downloads/searching_for_the_sound/")
-
+  (the-whole-shebang "/Users/mthomas/Downloads/searching_for_the_sound/")
   )
