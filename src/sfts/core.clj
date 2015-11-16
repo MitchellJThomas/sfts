@@ -92,7 +92,7 @@
 (defn get-all-broadcasts
   "Get all the broadcasts and related details that XRAY has for Searching For The Sound"
   []
-  (let [n (range 1 9)
+  (let [n (range 1 10)
         show-urls (map #(format "http://xray.fm/programs/searchingforthesound/page:%s?url=shows%%2Fsearchingforthesound" %) n)]
     (flatten (remove nil? (map get-broadcasts-memo show-urls)))))
 
@@ -127,10 +127,19 @@
    :title  (:title show)
    :year   (str (t/year (:date show)))
    :composer  (identity  "DJ Cozmic Edward")
-   :comment  (identity  "http://xray.fm/shows/searchingforthesound")
+   :comment  (identity "http://xray.fm/shows/searchingforthesound")
    :is-compilation true
    :genre "Spoken & Audio"
    :artwork-file (.getFile (io/resource "cover.jpg"))})
+
+(defn needs-mp3-tags?
+  "Does the provided mp3 file need tags?"
+  [mp3-file]
+  (try
+    (let [{:keys [composer comment]} (mp3/get-all-info mp3-file)]
+      (and (not= composer "DJ Cozmic Edward")
+           (not= comment "http://xray.fm/shows/searchingforthesound")))
+    (catch Exception e (println "Failed to get tag info for" mp3-file))))
 
 (defn build-downloads-script
   "Build a file using wget for downloading all the shows using dates"
@@ -148,12 +157,12 @@
           txt (io/file (str dir (txt-broadcast-file (:date b))))
           dt (tf/unparse fm (:date b))]
       (if (not (.exists mp3))
-        (println "Downloading broadcast for " dt)
-        (download-mp3-broadcast (:date b) dir))
-      (when (.exists mp3)
+        (if (download-mp3-broadcast (:date b) dir)
+          (println "Downloaded broadcast" (str mp3))))
+      (when (and (.exists mp3) (needs-mp3-tags? (str mp3)))
         (try
           (mp3/update-tag! mp3 (map-show-to-mp3 b))
-          (println "Tagged broadcast" (str mp3))          
+          (println "Tagged broadcast" (str mp3))
           (catch Exception e (println "Got error" e "tagging broadcast" mp3))))
       (spit txt (map-show-to-file b))
       (println "Wrote broadcast details for" dt))))
@@ -175,6 +184,6 @@
 
   (download-mp3-broadcast (:date (nth bn 50)) "/Users/mthomas/Downloads/searching_for_the_sound/")
 
-  (the-whole-shebang "/Users/mthomas/Downloads/searching_for_the_sound/")
+  (whole-shebang! "/Users/mthomas/Downloads/searching_for_the_sound/")
 
   )
