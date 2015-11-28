@@ -156,21 +156,27 @@
     (let [mp3 (io/file (str dir (mp3-broadcast-file (:date b))))
           txt (io/file (str dir (txt-broadcast-file (:date b))))
           dt (tf/unparse fm (:date b))]
-      (if (not (.exists mp3))
-        (if (download-mp3-broadcast (:date b) dir)
+      (println "Working on broadcast for" dt)
+      (when (not (.exists mp3))
+        (when (download-mp3-broadcast (:date b) dir)
           (println "Downloaded broadcast" (str mp3))))
       (when (and (.exists mp3) (needs-mp3-tags? (str mp3)))
         (try
           (mp3/update-tag! mp3 (map-show-to-mp3 b))
           (println "Tagged broadcast" (str mp3))
           (catch Exception e (println "Got error" e "tagging broadcast" mp3))))
-      (spit txt (map-show-to-file b))
-      (println "Wrote broadcast details for" dt))))
+      (when (not (.exists txt))
+        (spit txt (map-show-to-file b))
+        (println "Wrote broadcast details for" dt)))))
 
 (defn -main
   "Downloading all Searching For The Sound shows (an XRAY.fm broadcast)"
-  [& args]  
-  (whole-shebang! "./"))
+  [& args]
+  (println "Welcome to the sfts downloader!")
+  (let [dr (if args (nth args 0) "./")]
+    (println "Downloading to " dr)
+    (whole-shebang! dr))
+)
 
 (comment
   (get-broadcasts-memo "http://xray.fm/programs/searchingforthesound/page:8?url=shows%2Fsearchingforthesound")
